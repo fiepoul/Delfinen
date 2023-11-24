@@ -1,6 +1,4 @@
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -12,10 +10,12 @@ public class ChairmanUI {
     private List<Member> members;
     private int memberCountThisYear = 0; // Holder styr på antallet af medlemmer indmeldt i år
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private Memberdatabase memberDatabase;
 
     public ChairmanUI() {
         this.scanner = new Scanner(System.in);
         this.members = new ArrayList<>();
+        this.memberDatabase = new Memberdatabase();
     }
 
     public void start() {
@@ -38,8 +38,7 @@ public class ChairmanUI {
                 case 2 -> updateMember();
                 case 3 -> deleteMember();
                 case 4 -> showMembers();
-                case 5 -> {saveMembers();
-                exitMamagement();}
+                case 5 -> exitManagement();
                 default -> System.out.println("Ugyldigt valg. Prøv igen.");
             }
         }
@@ -49,7 +48,7 @@ public class ChairmanUI {
         System.out.println("Indtast navn: ");
         String name = scanner.nextLine();
         System.out.println("Indtast fødselsdato (dd.MM.yyyy):");
-        String birthDateString = scanner.next();
+        String birthDateString = scanner.nextLine();
         LocalDate birthDate = LocalDate.parse(birthDateString, DATE_FORMATTER);
         System.out.println("Indtast adresse:");
         String address = scanner.nextLine();
@@ -63,18 +62,17 @@ public class ChairmanUI {
         boolean isCompetitive = scanner.nextLine().trim().equalsIgnoreCase("ja");
 
         LocalDate startDate = LocalDate.now();
-        String memberNumber = generateMemberNumber(startDate);
+        int memberID = generateMemberNumber(startDate);
 
-        Member newMember = new Member(name, birthDate, address, phoneNumber, email, isActive, isCompetitive, startDate, memberNumber);
+        Member newMember = new Member(name, birthDate, address, phoneNumber, email, isActive, isCompetitive);
         members.add(newMember);
 
-        System.out.println(name + " er blevet tilføjet som medlem med medlemsnummer " + memberNumber + ".");
+        System.out.println(name + " er blevet tilføjet som medlem med medlemsnummer " + memberID + ".");
     }
 
-    private String generateMemberNumber(LocalDate startDate) {
-        int year = startDate.getYear();
+    private int generateMemberNumber(LocalDate startDate) {
         memberCountThisYear++;
-        return String.format("%d%04d", year, memberCountThisYear);
+        return memberCountThisYear;
     }
 
     private void updateMember() {
@@ -106,29 +104,36 @@ public class ChairmanUI {
     }
 
     private void deleteMember() {
-        // Implementer logik for at slette et medlem
-    }
+        System.out.println("Indtast navn på medlem, der skal slettes:");
+        String name = scanner.nextLine();
 
-    private void showMembers() {
-        // Implementer logik for at vise medlemslisten
-    }
-
-    private void saveMembers() {
-        try {
-            FileOutputStream fileOut = new FileOutputStream("members.ser");
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
-            out.writeObject(members);
-            out.close();
-            fileOut.close();
-            System.out.println("Medlemsdata er gemt.");
-        } catch (IOException i) {
-            i.printStackTrace();
+        boolean removed = members.removeIf(member -> member.getName().equalsIgnoreCase(name));
+        if (removed) {
+            System.out.println("Medlem slettet.");
+        } else {
+            System.out.println("Ingen medlem fundet med det navn.");
         }
     }
 
-    private void exitMamagement() {
-        // Implementer logik for at gemme data og afslutte programmet
-        System.out.println("Gemmer data og afslutter...");
+    private void showMembers() {
+        if (members.isEmpty()) {
+            System.out.println("Ingen medlemmer at vise.");
+        } else {
+            for (Member member : members) {
+                System.out.println(member);
+            }
+        }
+    }
+
+    private void exitManagement() {
+        try {
+            memberDatabase.saveMembers(members);
+            memberDatabase.saveNextId(Member.getNextId());
+            System.out.println("Gemmer data og afslutter...");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.exit(0);
     }
 
 
